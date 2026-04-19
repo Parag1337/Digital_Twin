@@ -21,7 +21,10 @@ import joblib
 import warnings
 import os
 import sys
+from pathlib import Path
 warnings.filterwarnings('ignore')
+
+os.chdir(Path(__file__).resolve().parents[1])
 
 # ==========================================
 # CONFIGURATION
