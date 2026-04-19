@@ -24,7 +24,11 @@ from matplotlib.animation import FuncAnimation
 from collections import deque
 import joblib
 import warnings
+import os
+from pathlib import Path
 warnings.filterwarnings('ignore')
+
+os.chdir(Path(__file__).resolve().parents[1])
 
 # ==========================================
 # CONFIGURATION

@@ -16,18 +16,20 @@ Features:
 # CRITICAL: Set matplotlib backend BEFORE importing pyplot
 import matplotlib
 matplotlib.use('TkAgg')  # Use TkAgg for interactive display on Linux
-import matplotlib.patches as mpatches
 
 import serial
 import time
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from collections import deque
 import joblib
 import warnings
+import os
+from pathlib import Path
 warnings.filterwarnings('ignore')
+
+os.chdir(Path(__file__).resolve().parents[1])
 
 # ==========================================
 # CONFIGURATION
@@ -278,194 +280,63 @@ def read_sensor_data(debug=False):
         return None
 
 # ==========================================
-# UI THEME CONFIGURATION
-# ==========================================
-
-# --- Color Palette ---
-BG_DARK       = '#0D1117'   # Near-black background (main)
-BG_PANEL      = '#161B22'   # Slightly lighter panel
-BG_CARD       = '#1C2430'   # Card/subplot background
-GRID_COLOR    = '#21262D'   # Subtle grid lines
-BORDER_COLOR  = '#30363D'   # Borders and separators
-
-# Accent colors
-ACCENT_TEAL   = '#00E5CC'   # Electric teal  — voltage, primary accent
-ACCENT_AMBER  = '#FFB347'   # Warm amber     — temperature, warnings
-ACCENT_RED    = '#FF4D6D'   # Vivid red      — current, alerts
-ACCENT_PURPLE = '#BD93F9'   # Soft purple    — power
-ACCENT_GREEN  = '#50FA7B'   # Neon green     — internal resistance
-ACCENT_CYAN   = '#8BE9FD'   # Light cyan     — SoC
-ACCENT_GOLD   = '#F1FA8C'   # Pale gold      — SOH main line
-EOL_RED       = '#FF5555'   # End-of-life reference line
-
-TEXT_PRIMARY  = '#E6EDF3'   # Near-white body text
-TEXT_DIM      = '#8B949E'   # Muted labels
-TEXT_ACCENT   = '#00E5CC'   # Highlighted values
-
-# Apply global matplotlib style
-plt.rcParams.update({
-    # Figure
-    'figure.facecolor':     BG_DARK,
-    'figure.edgecolor':     BG_DARK,
-
-    # Axes
-    'axes.facecolor':       BG_CARD,
-    'axes.edgecolor':       BORDER_COLOR,
-    'axes.labelcolor':      TEXT_DIM,
-    'axes.titlecolor':      TEXT_PRIMARY,
-    'axes.titleweight':     'bold',
-    'axes.titlesize':       10,
-    'axes.labelsize':       8,
-    'axes.linewidth':       0.8,
-    'axes.spines.top':      False,
-    'axes.spines.right':    False,
-    'axes.grid':            True,
-    'axes.axisbelow':       True,
-
-    # Grid
-    'grid.color':           GRID_COLOR,
-    'grid.linewidth':       0.6,
-    'grid.alpha':           1.0,
-
-    # Ticks
-    'xtick.color':          TEXT_DIM,
-    'ytick.color':          TEXT_DIM,
-    'xtick.labelsize':      7,
-    'ytick.labelsize':      7,
-    'xtick.major.size':     3,
-    'ytick.major.size':     3,
-
-    # Legend
-    'legend.facecolor':     BG_PANEL,
-    'legend.edgecolor':     BORDER_COLOR,
-    'legend.labelcolor':    TEXT_DIM,
-    'legend.fontsize':      7.5,
-    'legend.framealpha':    0.85,
-
-    # Font — Monospace for data, clean for labels
-    'font.family':          'monospace',
-    'font.size':            8,
-
-    # Lines
-    'lines.linewidth':      1.8,
-    'lines.antialiased':    True,
-})
-
-# ==========================================
 # VISUALIZATION SETUP
 # ==========================================
 print("\n[4] Setting up visualization...")
 
-fig = plt.figure(figsize=(22, 12))
-fig.patch.set_facecolor(BG_DARK)
+# Create figure with better layout
+fig = plt.figure(figsize=(18, 11))
+fig.suptitle('[LIVE ESP32 DATA] Battery Digital Twin with ML', fontsize=16, fontweight='bold', color='darkblue')
 
-# ── Title bar (top 5% of figure) ──────────────────────────────────────────
-fig.text(
-    0.5, 0.975,
-    '⚡  BATTERY DIGITAL TWIN',
-    ha='center', va='top',
-    fontsize=17, fontweight='bold',
-    color=ACCENT_TEAL,
-    fontfamily='monospace',
-)
-fig.text(
-    0.5, 0.950,
-    'LIVE ESP32   ·   ML STATE-OF-HEALTH   ·   REAL-TIME ANALYTICS',
-    ha='center', va='top',
-    fontsize=7.5,
-    color=TEXT_DIM,
-    fontfamily='monospace',
-)
+# Define subplots with more space
+ax1 = plt.subplot(3, 4, 1)   # Voltage
+ax2 = plt.subplot(3, 4, 2)   # Current
+ax3 = plt.subplot(3, 4, 3)   # Temperature
+ax4 = plt.subplot(3, 4, 5)   # Power
+ax5 = plt.subplot(3, 4, 6)   # Internal Resistance
+ax6 = plt.subplot(3, 4, 7)   # SoC
+ax7 = plt.subplot(3, 2, 5)   # SOH with ML prediction (bottom left, larger)
 
-# ── Thin separator line under title ───────────────────────────────────────
-fig.add_artist(plt.Line2D(
-    [0.01, 0.99], [0.932, 0.932],
-    transform=fig.transFigure,
-    color=BORDER_COLOR, linewidth=0.8
-))
-
-# ── Subplot grid — plots only, 3 cols, left 73% of figure ─────────────────
-# top=0.925 leaves space for title; right=0.72 leaves right 28% for dashboard
-gs = fig.add_gridspec(
-    3, 3,
-    left=0.04, right=0.71,
-    top=0.920, bottom=0.06,
-    hspace=0.58, wspace=0.38
-)
-
-ax1 = fig.add_subplot(gs[0, 0])   # Voltage
-ax2 = fig.add_subplot(gs[0, 1])   # Current
-ax3 = fig.add_subplot(gs[0, 2])   # Temperature
-ax4 = fig.add_subplot(gs[1, 0])   # Power
-ax5 = fig.add_subplot(gs[1, 1])   # Internal Resistance
-ax6 = fig.add_subplot(gs[1, 2])   # SoC
-ax7 = fig.add_subplot(gs[2, :])   # SOH — full bottom row
-
-# ── Dashboard panel — dedicated axes, right 26% of figure ─────────────────
-# [left, bottom, width, height] in figure fractions
-ax_dashboard = fig.add_axes([0.735, 0.06, 0.245, 0.860])
-ax_dashboard.set_facecolor(BG_PANEL)
-for spine in ax_dashboard.spines.values():
-    spine.set_visible(True)
-    spine.set_edgecolor(BORDER_COLOR)
-    spine.set_linewidth(1.0)
+# Dashboard text (right side, full height)
+ax_dashboard = plt.subplot(3, 4, (4, 12))
 ax_dashboard.axis('off')
 
-# ── Plot lines ────────────────────────────────────────────────────────────
-line_voltage,    = ax1.plot([], [], color=ACCENT_TEAL,   linewidth=2.0, label='Voltage',      solid_capstyle='round')
-line_current,    = ax2.plot([], [], color=ACCENT_RED,    linewidth=2.0, label='Current',      solid_capstyle='round')
-line_temp,       = ax3.plot([], [], color=ACCENT_AMBER,  linewidth=2.0, label='Temperature',  solid_capstyle='round')
-line_power,      = ax4.plot([], [], color=ACCENT_PURPLE, linewidth=2.0, label='Power',        solid_capstyle='round')
-line_internal_r, = ax5.plot([], [], color=ACCENT_GREEN,  linewidth=2.0, label='Internal R',   solid_capstyle='round')
-line_soc,        = ax6.plot([], [], color=ACCENT_CYAN,   linewidth=2.0, label='SoC',          solid_capstyle='round')
-line_soh,        = ax7.plot([], [], color=ACCENT_GOLD,   linewidth=2.8, label='SOH (ML)',     solid_capstyle='round', zorder=3)
+# Initialize line plots
+line_voltage, = ax1.plot([], [], 'b-', linewidth=2, label='Voltage')
+line_current, = ax2.plot([], [], 'r-', linewidth=2, label='Current')
+line_temp, = ax3.plot([], [], 'orange', linewidth=2, label='Temperature')
+line_power, = ax4.plot([], [], 'purple', linewidth=2, label='Power')
+line_internal_r, = ax5.plot([], [], 'green', linewidth=2, label='Internal R')
+line_soc, = ax6.plot([], [], 'cyan', linewidth=2, label='SoC')
+line_soh, = ax7.plot([], [], 'darkblue', linewidth=3, label='SOH (ML)', marker='o', markersize=3)
 
-# ── Glow / fill under SOH line ────────────────────────────────────────────
-soh_fill = ax7.fill_between([], [], alpha=0)   # placeholder; rebuilt each frame
+# Configure axes
+def setup_axis(ax, title, ylabel, color):
+    ax.set_title(title, fontweight='bold', fontsize=10)
+    ax.set_xlabel('Time (s)', fontsize=9)
+    ax.set_ylabel(ylabel, fontsize=9)
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='upper right', fontsize=8)
+    ax.spines['top'].set_color(color)
+    ax.spines['right'].set_color(color)
 
-# ── Axis styling helper ───────────────────────────────────────────────────
-def style_axis(ax, title, ylabel, accent):
-    ax.set_title(title, color=TEXT_PRIMARY, fontsize=9.5, fontweight='bold', pad=6)
-    ax.set_xlabel('Time (s)', color=TEXT_DIM, fontsize=7.5)
-    ax.set_ylabel(ylabel,     color=TEXT_DIM, fontsize=7.5)
+setup_axis(ax1, '[LIVE] Voltage (ESP32)', 'Voltage (V)', 'blue')
+setup_axis(ax2, '[LIVE] Current (ESP32)', 'Current (A)', 'red')
+setup_axis(ax3, '[LIVE] Temperature (ESP32)', 'Temp (C)', 'orange')
+setup_axis(ax4, '[LIVE] Power (ESP32)', 'Power (W)', 'purple')
+setup_axis(ax5, '[LIVE] Internal Resistance', 'Resistance (Ohm)', 'green')
+setup_axis(ax6, '[LIVE] SoC (ESP32)', 'SoC (%)', 'cyan')
 
-    ax.spines['left'].set_color(accent)
-    ax.spines['left'].set_linewidth(1.5)
-    ax.spines['bottom'].set_color(BORDER_COLOR)
-    ax.spines['bottom'].set_linewidth(0.8)
-
-    ax.tick_params(colors=TEXT_DIM, length=3)
-    ax.legend(loc='upper right', fontsize=7.5,
-              facecolor=BG_PANEL, edgecolor=BORDER_COLOR, labelcolor=accent)
-
-style_axis(ax1, '▸ Voltage',           'V (volts)',  ACCENT_TEAL)
-style_axis(ax2, '▸ Current',           'I (amps)',   ACCENT_RED)
-style_axis(ax3, '▸ Temperature',       'T (°C)',     ACCENT_AMBER)
-style_axis(ax4, '▸ Power',             'P (watts)',  ACCENT_PURPLE)
-style_axis(ax5, '▸ Internal Resistance','R (ohms)',  ACCENT_GREEN)
-style_axis(ax6, '▸ State of Charge',   'SoC (%)',   ACCENT_CYAN)
-
-# ── SOH axis — featured treatment ─────────────────────────────────────────
-ax7.set_facecolor(BG_CARD)
-ax7.set_title('▸ STATE OF HEALTH  —  ML RANDOM FOREST PREDICTION',
-              color=ACCENT_GOLD, fontsize=11, fontweight='bold', pad=8)
-ax7.set_xlabel('Time (s)', color=TEXT_DIM, fontsize=8)
-ax7.set_ylabel('SOH (%)',  color=TEXT_DIM, fontsize=8)
-
-ax7.spines['left'].set_color(ACCENT_GOLD)
-ax7.spines['left'].set_linewidth(2)
-ax7.spines['bottom'].set_color(BORDER_COLOR)
-ax7.spines['top'].set_visible(False)
-ax7.spines['right'].set_visible(False)
-
-ax7.tick_params(colors=TEXT_DIM, length=3)
-ax7.axhline(y=80, color=EOL_RED, linestyle='--', linewidth=1.2,
-            alpha=0.7, label='End-of-Life  (80 %)', zorder=2)
+# SOH plot (larger)
+ax7.set_title('[ML PREDICTION] State of Health', fontweight='bold', fontsize=12)
+ax7.set_xlabel('Time (s)', fontsize=10)
+ax7.set_ylabel('SOH (%)', fontsize=10)
+ax7.grid(True, alpha=0.3)
+ax7.legend(loc='lower left', fontsize=10)
+ax7.axhline(y=80, color='red', linestyle='--', alpha=0.5, label='End of Life (80%)')
 ax7.set_ylim(70, 105)
-ax7.legend(loc='lower left', fontsize=8.5,
-           facecolor=BG_PANEL, edgecolor=BORDER_COLOR,
-           labelcolor=TEXT_DIM)
-ax7.yaxis.label.set_color(ACCENT_GOLD)
+
+plt.tight_layout()
 
 print("[OK] Visualization ready")
 print("\n[5] Starting LIVE ESP32 monitoring...")
@@ -484,7 +355,7 @@ def update(frame):
     """
     Called every UPDATE_INTERVAL ms to update the plot
     """
-    global prediction_count, min_soh, max_soh, soh_fill
+    global prediction_count, min_soh, max_soh
     
     try:
         # Read sensor data
@@ -529,14 +400,7 @@ def update(frame):
         line_internal_r.set_data(time_data, internal_r_data)
         line_soc.set_data(time_data, soc_data)
         line_soh.set_data(time_data, soh_data)
-
-        # Glow fill under SOH line
-        soh_fill.remove()
-        soh_fill = ax7.fill_between(
-            time_data, list(soh_data), 70,
-            color=ACCENT_GOLD, alpha=0.08, zorder=1
-        )
-
+        
         # Auto-scale axes
         for ax, data in [
             (ax1, voltage_data),
@@ -591,9 +455,9 @@ def update(frame):
         
         # Format instantaneous time remaining
         if not battery_connected:
-            time_remaining_str = "N/A  (no battery)"
+            time_remaining_str = "N/A (No Battery)"
         elif time_remaining_hours == float('inf'):
-            time_remaining_str = "N/A  (idle/charging)"
+            time_remaining_str = "N/A (Idle/Charging)"
         elif time_remaining_hours > 100:
             time_remaining_str = "> 100 hours"
         elif time_remaining_hours < 0.016:  # Less than 1 minute
@@ -608,9 +472,9 @@ def update(frame):
         
         # Format average time remaining
         if not battery_connected:
-            avg_time_remaining_str = "N/A  (no battery)"
+            avg_time_remaining_str = "N/A (No Battery)"
         elif avg_time_remaining == float('inf'):
-            avg_time_remaining_str = "N/A  (idle/charging)"
+            avg_time_remaining_str = "N/A (Idle/Charging)"
         elif avg_time_remaining > 100:
             avg_time_remaining_str = "> 100 hours"
         elif avg_time_remaining < 0.016:  # Less than 1 minute
@@ -624,109 +488,70 @@ def update(frame):
                 avg_time_remaining_str = f"{minutes}m"
         
         # Battery status indicator
-        if battery_connected:
-            battery_status  = "● CONNECTED"
-            status_color    = ACCENT_GREEN
-        else:
-            battery_status  = "○ DISCONNECTED"
-            status_color    = ACCENT_RED
+        battery_status = "[CONNECTED]" if battery_connected else "[DISCONNECTED]"
+        
+        dashboard_text = f"""
+╔════════════════════════════════════════════╗
+║   [LIVE] Digital Twin Dashboard           ║
+╚════════════════════════════════════════════╝
 
-        # ── Dashboard redraw ─────────────────────────────────────────────
+ BATTERY STATUS: {battery_status}
+ 
+ SESSION INFO:
+ ───────────────────────────────────────────
+  Time          : {int(elapsed_time // 60)}m {int(elapsed_time % 60)}s
+  Predictions   : {prediction_count}
+
+ STATE OF HEALTH (SOH):
+ ───────────────────────────────────────────
+  Current SOH   : {soh_pred:.2f} %
+  Average SOH   : {avg_soh:.2f} %
+  Min SOH       : {min_soh:.2f} %
+  Max SOH       : {max_soh:.2f} %
+
+ BATTERY LIFE ESTIMATES:
+ ───────────────────────────────────────────
+  Time Left     : {time_remaining_str}
+  Avg Time Left : {avg_time_remaining_str}
+  RUL (Health)  : {rul:.1f} hours
+  Degradation   : {degradation_rate:.4f} %/h
+
+ LIVE READINGS:
+ ───────────────────────────────────────────
+  Voltage       : {voltage:.3f} V
+  Current       : {current:.4f} A
+  Temperature   : {temp:.2f} C
+  SoC           : {soc:.2f} %
+  Power         : {features['Power']:.3f} W
+  Internal R    : {features['Internal_R']:.4f} Ohm
+  Thermal       : {features['Thermal_stress']:.2f}
+
+ ML MODEL INFO:
+ ───────────────────────────────────────────
+  Type          : Random Forest
+  Trees         : 400
+  Accuracy      : R2 = 0.9999
+  Speed         : < 1ms
+
+╚════════════════════════════════════════════╝
+        """
+        
         ax_dashboard.clear()
-        ax_dashboard.set_facecolor(BG_PANEL)
         ax_dashboard.axis('off')
-        for spine in ax_dashboard.spines.values():
-            spine.set_visible(True)
-            spine.set_edgecolor(BORDER_COLOR)
-            spine.set_linewidth(1.0)
-
-        T = ax_dashboard.transAxes   # shorthand
-
-        def row(y, label, value, val_color=TEXT_PRIMARY, unit=''):
-            ax_dashboard.text(0.06, y, label,
-                              transform=T, fontsize=7.5, color=TEXT_DIM,
-                              fontfamily='monospace', va='top')
-            ax_dashboard.text(0.94, y, f"{value}{unit}",
-                              transform=T, fontsize=7.5, color=val_color,
-                              fontfamily='monospace', va='top', ha='right',
-                              fontweight='bold')
-
-        def section(y, title, accent=ACCENT_TEAL):
-            ax_dashboard.text(0.06, y, title,
-                              transform=T, fontsize=7, color=accent,
-                              fontfamily='monospace', va='top',
-                              fontweight='bold')
-
-        # Panel title
-        ax_dashboard.text(0.5, 0.985, 'DASHBOARD',
-                          transform=T, fontsize=10, color=ACCENT_TEAL,
-                          fontfamily='monospace', ha='center', va='top',
-                          fontweight='bold')
-        ax_dashboard.text(0.5, 0.963, 'LIVE  ·  DIGITAL TWIN',
-                          transform=T, fontsize=6.5, color=TEXT_DIM,
-                          fontfamily='monospace', ha='center', va='top')
-
-        # Status badge
-        ax_dashboard.text(0.5, 0.930, battery_status,
-                          transform=T, fontsize=8.5, color=status_color,
-                          fontfamily='monospace', ha='center', va='center',
-                          fontweight='bold')
-
-        # Session
-        section(0.880, '─ SESSION', ACCENT_TEAL)
-        row(0.848, 'Elapsed',     f"{int(elapsed_time//60):02d}:{int(elapsed_time%60):02d}", TEXT_PRIMARY, ' min')
-        row(0.820, 'Predictions', f"{prediction_count:,}", ACCENT_TEAL)
-
-        # SOH block
-        section(0.785, '─ STATE OF HEALTH', ACCENT_GOLD)
-        row(0.752, 'Current SOH', f"{soh_pred:.2f}", ACCENT_GOLD, ' %')
-        row(0.724, 'Average SOH', f"{avg_soh:.2f}",  TEXT_PRIMARY, ' %')
-        row(0.696, 'Min SOH',     f"{min_soh:.2f}",  ACCENT_RED,   ' %')
-        row(0.668, 'Max SOH',     f"{max_soh:.2f}",  ACCENT_GREEN, ' %')
-
-        # Life estimates
-        section(0.632, '─ LIFE ESTIMATES', ACCENT_AMBER)
-        row(0.599, 'Time Left',   time_remaining_str,     ACCENT_AMBER)
-        row(0.571, 'Avg Left',    avg_time_remaining_str, TEXT_PRIMARY)
-        row(0.543, 'RUL (health)', f"{rul:.1f}", ACCENT_AMBER, ' h')
-        row(0.515, 'Degradation', f"{degradation_rate:.4f}", TEXT_DIM, ' %/h')
-
-        # Live readings
-        section(0.478, '─ LIVE READINGS', ACCENT_TEAL)
-        row(0.445, 'Voltage',    f"{voltage:.3f}",             ACCENT_TEAL,   ' V')
-        row(0.417, 'Current',    f"{current:.4f}",             ACCENT_RED,    ' A')
-        row(0.389, 'Temp',       f"{temp:.2f}",                ACCENT_AMBER,  ' °C')
-        row(0.361, 'SoC',        f"{soc:.2f}",                 ACCENT_CYAN,   ' %')
-        row(0.333, 'Power',      f"{features['Power']:.3f}",   ACCENT_PURPLE, ' W')
-        row(0.305, 'Int. Resist',f"{features['Internal_R']:.4f}", ACCENT_GREEN,' Ω')
-        row(0.277, 'Thermal',    f"{features['Thermal_stress']:.2f}", TEXT_DIM, '')
-
-        # ML info
-        section(0.240, '─ ML MODEL', ACCENT_PURPLE)
-        row(0.207, 'Type',     'Random Forest', ACCENT_PURPLE)
-        row(0.179, 'Trees',    '400',            TEXT_DIM)
-        row(0.151, 'Accuracy', 'R² = 0.9999',   ACCENT_GREEN)
-        row(0.123, 'Latency',  '< 1 ms',         ACCENT_TEAL)
-
-        # Port info footer
-        ax_dashboard.text(0.5, 0.055,
-                          f'{COM_PORT}  @  {BAUD_RATE} baud',
-                          transform=T, fontsize=6, color=TEXT_DIM,
-                          fontfamily='monospace', ha='center', va='bottom')
-        ax_dashboard.text(0.5, 0.030,
-                          'ESP32  ·  Real-time',
-                          transform=T, fontsize=6, color=BORDER_COLOR,
-                          fontfamily='monospace', ha='center', va='bottom')
-
+        ax_dashboard.text(0.02, 0.98, dashboard_text, 
+                         transform=ax_dashboard.transAxes,
+                         fontsize=8.5,
+                         verticalalignment='top',
+                         fontfamily='monospace',
+                         linespacing=1.6,
+                         bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.2, pad=0.8))
+        
         # Console output
         if prediction_count % 2 == 0:  # Print every 2 predictions (faster feedback)
-            msg = f"[{prediction_count:04d}] SOH: {soh_pred:6.2f}% | V: {voltage:.3f}V | I: {current:.4f}A | T: {temp:.1f}C | RUL: {rul:.1f}h"
-            print(msg, file=sys.stderr)
-            sys.stderr.flush()
+            print(f"[{prediction_count:04d}] SOH: {soh_pred:6.2f}% | V: {voltage:.3f}V | I: {current:.4f}A | T: {temp:.1f}C | RUL: {rul:.1f}h")
     
     except Exception as e:
-        print(f"[ERROR] Error in update: {e}", file=sys.stderr)
-        sys.stderr.flush()
+        print(f"[ERROR] Error in update: {e}")
         pass
     
     return line_voltage, line_current, line_temp, line_power, line_internal_r, line_soc, line_soh
@@ -736,23 +561,13 @@ def update(frame):
 # ==========================================
 ani = FuncAnimation(fig, update, interval=UPDATE_INTERVAL, blit=False)
 
-# Enable interactive mode so animation updates display without blocking
-plt.ion()
-plt.show()
-
 try:
-    print("\n[GUI Window opened - predictions showing below]\n")
-    sys.stderr.flush()
-    
-    # Keep program running while animation works
-    while True:
-        plt.pause(0.001)
-        
+    plt.show()
+    print("\n\n[STOP] Monitoring stopped by user")
 except KeyboardInterrupt:
     print("\n\n[STOP] Monitoring stopped by user")
 finally:
     ser.close()
-    plt.close('all')
     
     print("\n" + "=" * 70)
     print("[SESSION SUMMARY - LIVE ESP32 DATA]")

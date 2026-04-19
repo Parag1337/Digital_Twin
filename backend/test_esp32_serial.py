@@ -6,6 +6,10 @@ Checks if ESP32 is properly connected and sending data
 
 import serial
 import time
+import os
+from pathlib import Path
+
+os.chdir(Path(__file__).resolve().parents[1])
 
 # Configuration
 COM_PORT = "/dev/ttyUSB0"
