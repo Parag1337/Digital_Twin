@@ -1,0 +1,24 @@
+{
+    "training_date": "2025-12-02 23:59:11",
+    "n_samples": 856,
+    "n_features": 20,
+    "train_samples": 684,
+    "test_samples": 172,
+    "best_params": {
+        "max_depth": 10,
+        "max_features": "sqrt",
+        "min_samples_leaf": 1,
+        "min_samples_split": 2,
+        "n_estimators": 400
+    },
+    "cv_rmse_mean": 0.03758044203200678,
+    "cv_rmse_std": 0.005966773591069693,
+    "train_rmse": 0.012680531518895666,
+    "train_r2": 0.9999844940561986,
+    "test_rmse": 0.030613717966500798,
+    "test_r2": 0.9999142229248047,
+    "test_mae": 0.022135472469059395,
+    "accuracy_within_1pct": 100.0,
+    "accuracy_within_2pct": 100.0,
+    "battery_capacity_Ah": 2.2
+}

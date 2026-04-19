@@ -1,0 +1,15 @@
+{
+  "root": ".",
+  "exclude_dirs": [
+    "__pycache__",
+    ".git",
+    "node_modules",
+    ".venv",
+    "venv",
+    "env",
+    ".pytest_cache",
+    ".mypy_cache"
+  ],
+  "max_file_size": 5242880,
+  "watch": true
+}
